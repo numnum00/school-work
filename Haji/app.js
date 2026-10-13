@@ -34,6 +34,19 @@
     if (el) el.style.display = 'none';
   }
 
+  // Local video files shown inside each gallery (keyed by category slug).
+  const GALLERY_VIDEOS = {
+    motorcycle: ['vid/motor1.mp4', 'vid/motor2.mp4'],
+    windsurfing: ['vid/wind1.mp4', 'vid/wind2.mp4'],
+  };
+
+  function videoSlot(src) {
+    return `
+      <div class="card video-card" title="Video">
+        <video controls playsinline preload="metadata" src="${escapeHtml(src)}"></video>
+      </div>`;
+  }
+
   // ============================================================
   // PROFILE
   // ============================================================
@@ -115,6 +128,8 @@
           const isWindsurf = cat.slug === 'windsurfing';
           const cardClass = isWindsurf ? 'card windsurf-card' : 'card';
 
+          const videos = GALLERY_VIDEOS[cat.slug] || [];
+
           const slots =
             cat.images && cat.images.length
               ? cat.images
@@ -136,17 +151,19 @@
                   )
                   .join('');
 
+          const videoSlots = videos.map((v) => videoSlot(v)).join('');
+
+          const total = (cat.images ? cat.images.length : 0) + videos.length;
+
           return `
             <section class="gallery-section">
               <div class="section-header">
                 <h2><i class="${escapeHtml(
                   cat.icon_class || 'fas fa-image'
                 )}"></i> ${escapeHtml(cat.name)}</h2>
-                <span class="badge">${escapeHtml(
-                  cat.badge_text || (cat.images ? cat.images.length + ' slots' : '6 slots')
-                )}</span>
+                <span class="badge">${total} slots</span>
               </div>
-              <div class="grid-6">${slots}</div>
+              <div class="grid-6">${slots}${videoSlots}</div>
             </section>`;
         })
         .join('');
@@ -154,25 +171,28 @@
       console.warn('[Haji] Galleries error:', err);
 
       const fallback = [
-        ['Motorcycle Gallery', 'fas fa-motorcycle', 'card'],
-        ['Windsurfing Gallery', 'fas fa-water', 'card windsurf-card'],
+        { slug: 'motorcycle', name: 'Motorcycle Gallery', icon: 'fas fa-motorcycle', cls: 'card' },
+        { slug: 'windsurfing', name: 'Windsurfing Gallery', icon: 'fas fa-water', cls: 'card windsurf-card' },
       ];
 
       container.innerHTML = fallback
-        .map(
-          ([name, icon, cls]) => `
+        .map(({ slug, name, icon, cls }) => {
+          const videos = GALLERY_VIDEOS[slug] || [];
+          const videoSlots = videos.map((v) => videoSlot(v)).join('');
+          return `
           <section class="gallery-section">
             <div class="section-header">
               <h2><i class="${icon}"></i> ${name}</h2>
-              <span class="badge">6 slots</span>
+              <span class="badge">${6 + videos.length} slots</span>
             </div>
             <div class="grid-6">
               ${Array.from({ length: 6 })
                 .map(() => `<div class="${cls}"><div class="card-img placeholder"></div></div>`)
                 .join('')}
+              ${videoSlots}
             </div>
-          </section>`
-        )
+          </section>`;
+        })
         .join('');
     }
   }
@@ -219,9 +239,8 @@
         .join('');
     } catch (err) {
       console.warn('[Haji] Music error:', err);
-      grid.innerHTML = `<div class="loading">
-        <i class="fas fa-triangle-exclamation"></i> Could not load albums
-      </div>`;
+      // Keep the static players in index.html as a fallback instead of
+      // wiping them out with an error message.
       if (badge) badge.textContent = 'offline';
     }
   }
